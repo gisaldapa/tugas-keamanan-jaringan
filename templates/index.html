@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Local Security Lab — AES-256-GCM &amp; HTTP Sniffing Demo</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <div class="badge-row">
+        <span class="badge badge-warn">Transport: HTTP/1.1 (Plaintext)</span>
+        <span class="badge badge-ok">At-Rest Storage: {{ algorithm }} + SQLite</span>
+        <span class="badge badge-info">Endpoint: 127.0.0.1:8000</span>
+      </div>
+      <h1>Simulasi Keamanan Transmisi &amp; Penyimpanan Data Lokal</h1>
+      <p class="subtitle">
+        Mendemonstrasikan bagaimana <strong>data sensitif dienkripsi di sisi server</strong> sebelum disimpan ke SQLite,
+        sementara lalu lintas jaringan HTTP polos pada interface loopback tetap dapat diamati oleh <em>packet sniffer</em>.
+      </p>
+    </header>
+
+    <main class="grid-layout">
+      <!-- Panel 1: Input & Enkripsi -->
+      <section class="card">
+        <h2>1. Input &amp; Simpan Data (Enkripsi)</h2>
+        <p class="card-desc">
+          Data dikirim dalam format JSON via <code>POST /api/secrets</code>, lalu dienkripsi dengan
+          <strong>{{ algorithm }}</strong> menggunakan kunci di <code>.env</code> sebelum masuk ke database.
+        </p>
+
+        <form id="secret-form">
+          <div class="form-group">
+            <label for="name-input">Nama / Identitas</label>
+            <input
+              type="text"
+              id="name-input"
+              name="name"
+              placeholder="Contoh: Agen Rahasia 007"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="message-input">Pesan Rahasia (Plaintext)</label>
+            <textarea
+              id="message-input"
+              name="secret_message"
+              rows="3"
+              placeholder="Contoh: RAHASIA_NEGARA_123"
+              required
+            ></textarea>
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn btn-primary" id="submit-btn">
+              Enkripsi &amp; Simpan ke Vault
+            </button>
+            <button type="button" class="btn btn-secondary" id="fill-sample-btn">
+              Isi Sample Uji
+            </button>
+          </div>
+        </form>
+
+        <div id="status-banner" class="status-banner hidden"></div>
+      </section>
+
+      <!-- Panel 2: Baca & Dekripsi -->
+      <section class="card">
+        <div class="card-header">
+          <div>
+            <h2>2. Baca Data (Dekripsi Server)</h2>
+            <p class="card-desc">
+              <code>GET /api/secrets</code> mengambil <em>ciphertext</em> dari SQLite, mendekripsinya, dan mengembalikan <em>plaintext</em>.
+            </p>
+          </div>
+          <button type="button" class="btn btn-outline" id="refresh-decrypted-btn">
+            Muat Ulang &amp; Dekripsi
+          </button>
+        </div>
+
+        <div id="decrypted-list" class="record-list">
+          <p class="empty-state">Memuat data terdekripsi...</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Panel 3: Inspeksi Storage SQLite (Ciphertext Mentah) -->
+    <section class="card full-width">
+      <div class="card-header">
+        <div>
+          <h2>3. Inspeksi Penyimpanan Lokal SQLite (Data at Rest — Ciphertext Mentah)</h2>
+          <p class="card-desc">
+            Isi aktual di tabel <code>secrets</code> (<code>GET /api/secrets/raw</code>). Penyerang yang mencuri file
+            <code>data/vault.db</code> tanpa kunci <code>.env</code> hanya melihat <em>nonce</em> &amp; <em>ciphertext</em> Base64.
+          </p>
+        </div>
+        <button type="button" class="btn btn-outline" id="refresh-raw-btn">
+          Inspeksi Ciphertext DB
+        </button>
+      </div>
+
+      <div class="table-wrap">
+        <table id="raw-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Algoritma</th>
+              <th>Nonce (Base64)</th>
+              <th>Ciphertext + Auth Tag (Base64)</th>
+              <th>Waktu (UTC)</th>
+            </tr>
+          </thead>
+          <tbody id="raw-tbody">
+            <tr><td colspan="5" class="empty-state">Memuat data mentah database...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
